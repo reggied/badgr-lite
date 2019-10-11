@@ -18,7 +18,6 @@ twine = "*"
 watchdog = "*"
 sphinx = "*"
 flake8 = "*"
-snowballstemmer = "<2.0.0"
 
 [packages]
 requests = "*"
