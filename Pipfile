@@ -18,7 +18,8 @@ twine = "*"
 watchdog = "*"
 sphinx = "*"
 flake8 = "*"
-yarl = {markers = "python_version>='3.5'",version = "*"}
+# VCRpy dependency:
+yarl = {markers = "python_version>='3.5'",version = "<1.4.0"}
 
 [packages]
 requests = "*"
