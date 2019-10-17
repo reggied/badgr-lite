@@ -7,6 +7,8 @@
 
 import json
 import os
+from pathlib import Path
+
 
 import requests
 from requests.models import Response
@@ -30,7 +32,7 @@ class Badge:
     REQUIRED_JSON = ['entityId', 'expires', 'entityType', 'extensions',
                      'openBadgeId', 'createdBy', 'issuer', 'image',
                      'issuerOpenBadgeId', 'createdAt']
-    REQUIRED_ATTRS = [pythonic(attr) for attr in REQUIRED_JSON]
+    REQUIRED_ATTRS = {pythonic(attr) for attr in REQUIRED_JSON}
 
     def __init__(self, attrs: dict) -> None:
         """Initialize with single dictionary
@@ -40,26 +42,23 @@ class Badge:
         self._attrs = attrs
         self._add_dynamic_attrs()
 
-        pythonic_attrs = [pythonic(k) for k in attrs.keys()]
-        missing_but_required = set(self.REQUIRED_ATTRS) - set(pythonic_attrs)
+        pythonic_attrs = {pythonic(k) for k in attrs}
+        missing_but_required = self.REQUIRED_ATTRS - pythonic_attrs
 
         if missing_but_required:
             raise exceptions.RequiredAttributesMissingError(
                 ", ".join(missing_but_required))
 
     def _add_dynamic_attrs(self):
-        for key in self._attrs.keys():
-            pythonic_key = pythonic(key)
-            if pythonic_key == "created_at":
-                self._attrs[key] = to_datetime(self._attrs[key])
-            setattr(self, pythonic_key, self._attrs[key])
+        for attr_name, attr_value in self._attrs.items():
+            pythonic_name = pythonic(attr_name)
+            if pythonic_name == "created_at":
+                self._attrs[attr_name] = to_datetime(attr_value)
+            setattr(self, pythonic_name, value)
 
     def __str__(self):
         url = "https://badgr.io/public/assertions/{}".format(self.entity_id)
-        name = "<No name>"
-        if hasattr(self, 'name'):
-            name = self.name
-
+        name = getattr(self, 'name', "<No name>")
         return "{}\t{}\t{}".format(self.entity_id, url, name)
 
 
@@ -68,7 +67,7 @@ class BadgrLite:
     # pylint: disable=R0903
 
     def __init__(self, token_filename: str) -> None:
-        self.token_filename = token_filename
+        self.token_filename = Path(token_filename)
         self._token_data = None
 
     def load_token(self) -> None:
@@ -77,12 +76,12 @@ class BadgrLite:
         Ensure token_filename exists. Load JSON data from the filename.
         Store in self._token_data
         """
-        if not os.path.exists(self.token_filename):
+        if not self.token_filename.exists():
             raise exceptions.TokenFileNotFoundError(
                 "Token File Not Found.",
                 exceptions.TokenFileNotFoundError.__doc__)
 
-        with open(self.token_filename, 'r') as token_handler:
+        with self.token_filename.open() as token_handler:
             self._token_data = json.load(token_handler)
 
     def refresh_token(self):
@@ -100,7 +99,7 @@ class BadgrLite:
             assert response.status_code == 200
             raw_data = response.json()
             self._token_data = raw_data
-            with open(self.token_filename, 'w') as token_handler:
+            with self.token_filename.open('w') as token_handler:
                 token_handler.write(json.dumps(raw_data))
 
     def prepare_headers(self):
